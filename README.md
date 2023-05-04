@@ -1,2 +1,2 @@
 # Multi-Core-Processor
-A Multi-Core Processor I designed using Verilog HDL. This public repository include demo files and README for the same.
+This is a 16-bit, 8-register Multi-Core Processor designed using Verilog HDL (Hardware Description Language) with a wide range of memory mapped I/O and various additional functionalities. The processor has two cores but it is highly scalable. Memory arbiter policy has been implemented to avoid memory access conflicts among multiple cores. In addition to that, Atomic Instructions have also been implemented to avoid memory access conflicts when multiple cores try to access the same memory location access.
