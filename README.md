@@ -1,10 +1,10 @@
 # Multi-Core-Processor
-A 16-bit, 8-register Multi-Core Processor designed using Verilog HDL (Hardware Description Language) with a wide range of memory mapped I/O and various additional functionalities. The processor has two cores but it is highly scalable. Memory arbiter policy has been implemented to avoid memory access conflicts among multiple cores. In addition to that, Atomic Instructions have also been implemented to avoid memory access conflicts when multiple cores try to access the same memory location access.   
+A 16-bit, 8-register Multi-Core Processor designed using Verilog HDL (Hardware Description Language) with a wide range of memory mapped I/O and various additional functionalities. The processor has two cores but it is highly scalable. Memory arbiter policy has been implemented to avoid memory access conflicts among multiple cores. In addition to that, Atomic Instructions have also been implemented to avoid memory access conflicts when multiple cores try to access the same memory location.   
 
 ## Disclaimer
 This repository explains the functionalities of this Multi-Core Processor and also contains the test programs along with the snapshots of the running programs. Although most of the content in this Processor was above and beyond the course expectations (which were just to implement some of the basic instructions of a processor), I cannot publicly share the actual code for the processor to prevent students from committing Academic Integrity violations by copying it.   
 
-Employers are encouraged to ask me for the Code if you are considering hiring me.  
+Employers are encouraged to ask me for the Code if they are considering hiring me.  
 
 ## Terminology used throughout the repository
 
@@ -19,10 +19,13 @@ Employers are encouraged to ask me for the Code if you are considering hiring me
 ### General Encoding Format
 
 Each instruction is being encoded in a 16-bit format. On a broader level, there are two types of encoding being used:  
-* III 0 XXX 000000YYY,
-These are the instructions that can be used to implement assembly code programs on my Multi-Core Processor
+* III 0 XXX 000000YYY --> involves only registers
+* III 1 XXX DDDDDDDDD --> involves register as well as immediate data #D <br/>
+Here, III denotes the operation code, XXX denotes register X (operand 1), YYY denotes register Y (operand 2) or DDDDDDDDD denotes #D (operand 2) <br/>
 
 ## Instructions
+
+These are the instructions that can be used to implement assembly code programs on my Multi-Core Processor
 
 Instruction | Assembly | Notation | Encoding | Meaning 
 --- | --- | --- | --- | --- 
@@ -58,12 +61,26 @@ A memory initialization file (MIF) is used for memory.  It contains the binary f
 This memory contains the binary code for the assembly instructions. The memory contains 4096 16-bit words. Memory addresses range from 0x0000 to 0x0FFF.  
 
 ### LED (Address - 0x1000)  
-There are 10 LEDs. LED10 is reserved to show the *Run* status of the processor. To display something on LEDs, the 9 bits that are written at address 0x1000.  
+There are 10 LEDs. LED10 is reserved to show the *Run* status of the processor. To display something on LEDs, the 9 bits are written at address 0x1000.  
 1 means on and 0 means off  
 
 ### 7-Segment HEX Displays (Address - 0x2000 to 0x2005)
-There are 6 7-segment HEX Displays - HEX0 to HEX5. To display something on a HEX display, the 7 bits for a 7-segment display are written at the appropriate address.  
+There are 6 7-segment HEX Displays - HEX0 to HEX5. To display something on a HEX display, the 7 bits for a 7-segment display are written at the corresponding address of that HEX display.  
 For example, if 01111111 written at address 0x2004 --> turns on all the segments of HEX4  
 
 ### Switches (Address - 0x3000)  
-There are 10 switches (SWs). SW10 is reserved to control the *Run* status of the processor. To 
+There are 10 switches (SWs). SW9 is reserved to control the *Run* status of the processor. To fetch any input from the switches, the 9 bits are read from address 0x3000. For example, if SW9, SW6, SW2 and SW1 are on and all other switches are off --> *Run* will be equal to 1 and when we read from address 0x3000, we get the 9 bits as 001000110   
+
+### Pushbuttons (Address - 0x4000)  
+There are 4 pushbuttons (KEYs). To fetch any input from the pushbuttons, the 4 bits are read from address 0x4000. For example, if KEY3 is pressed --> when we read from address 0x4000, we get the 4 bits as 1000. So, we can perform Polled I/O.  
+
+## Fundamental Idea behind Multi-Core Processor 
+
+* First of all, I built a Verilog module named ```proc``` for a processor that can handle all the instructions mentioned in the section above.
+* Now, in the top-level module, I create two instances of ```proc``` named ```procA``` and ```procB```. So, basically, I get the two cores A and B of my multi-core processor.
+* The next step would be to handle the conflicts regarding memory and I/O access that might happen between the two cores. These conflicts are handled using the concept of memory arbiter and atomic instructions
+
+### Memory Arbiter  
+
+* Both the cores share the same memory --> So, they have the same data_in signal. But both of them have separate Read signals named ```R_A, R_B``` and Write signals named ```W_A, W_B```.
+
