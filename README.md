@@ -61,7 +61,7 @@ A memory initialization file (MIF) is used for memory.  It contains the binary f
 This memory contains the binary code for the assembly instructions. The memory contains 4096 16-bit words. Memory addresses range from 0x0000 to 0x0FFF.  
 
 ### LED (Address - 0x1000)  
-There are 10 LEDs. LED10 is reserved to show the *Run* status of the processor. To display something on LEDs, the 9 bits are written at address 0x1000.  
+There are 10 LEDs - LED9 to LED0. LED9 is reserved to show the ```Run``` status of the processor. To display something on LEDs, the 9 bits are written at address 0x1000.  
 1 means on and 0 means off  
 
 ### 7-Segment HEX Displays (Address - 0x2000 to 0x2005)
@@ -69,10 +69,10 @@ There are 6 7-segment HEX Displays - HEX0 to HEX5. To display something on a HEX
 For example, if 01111111 written at address 0x2004 --> turns on all the segments of HEX4  
 
 ### Switches (Address - 0x3000)  
-There are 10 switches (SWs). SW9 is reserved to control the *Run* status of the processor. To fetch any input from the switches, the 9 bits are read from address 0x3000. For example, if SW9, SW6, SW2 and SW1 are on and all other switches are off --> *Run* will be equal to 1 and when we read from address 0x3000, we get the 9 bits as 001000110   
+There are 10 switches - SW9 to SW0. SW9 is reserved to control the ```Run``` status of the processor. To fetch any input from the switches, the 9 bits are read from address 0x3000. For example, if SW9, SW6, SW2 and SW1 are on and all other switches are off --> ```Run``` will be equal to 1 and when we read from address 0x3000, we get the 9 bits as 001000110   
 
 ### Pushbuttons (Address - 0x4000)  
-There are 4 pushbuttons (KEYs). To fetch any input from the pushbuttons, the 4 bits are read from address 0x4000. For example, if KEY3 is pressed --> when we read from address 0x4000, we get the 4 bits as 1000. So, we can perform Polled I/O.  
+There are 4 pushbuttons - KEY3 to KEY0. To fetch any input from the pushbuttons, the 4 bits are read from address 0x4000. For example, if KEY3 is pressed --> when we read from address 0x4000, we get the 4 bits as 1000. So, we can perform Polled I/O.  
 
 ## Fundamental Idea behind Multi-Core Processor 
 
@@ -82,5 +82,16 @@ There are 4 pushbuttons (KEYs). To fetch any input from the pushbuttons, the 4 b
 
 ### Memory Arbiter  
 
-* Both the cores share the same memory --> So, they have the same data_in signal. But both of them have separate Read signals named ```R_A, R_B``` and Write signals named ```W_A, W_B```.
+* Both the cores share the same memory --> So, they have the same ```data_in``` signal. But both of them have separate ```read```, ```write```, and ```data_out``` signals.
+* I also use separate ```Run``` signals named ```Run_A``` and ```Run_B``` for both the cores. So, basically, the ```Run``` signal controlled by SW9 and the handling of memory and I/O conflicts decide the values of ```Run_A``` and ```Run_B```. Priority is given to ```procA``` in case both the cores need to access memory at the exact same time.
+* So, the role of the memory arbiter is that if there is a memory or an I/O access conflict between the two cores, decide which core should be given access to what resource, that basically means allocating resources among the cores.
+* In addition to this, each of the cores outputs an atomic signal as well. An atomic signal is output when an atomic instruction is performed. Basically, we use the atomic instruction in our assembly code (.s file) when we know that the two cores might be trying to access the exact same memory location simultaneously. (Details regarding Atomic Instructions are discussed in detail in a separate section)
+* If neither of the cores output an atomic signal --> both ```Run_A``` and ```Run_B``` are kept *on* by the memory arbiter. In this case, the role of the memory arbiter is to allocate the resources such as memory and I/O to corresponding cores. For example, if at a particular time, ```procA``` is trying to read from the switches and ```procB``` is trying to write to the 7-segment HEX displays, the memory arbiter provides the global ```data_in``` signal to ```procA``` and the global ```data_out``` signal comes from ```procB```. This way, the processor is able to do more than one task in parallel
+* If either of the cores output an atomic signal --> the ```Run``` signal of the other core is turned *off* by the memory arbiter. In this case, the role of the memory arbiter is to decide which core of the processor should stay *on* and which one should be strictly turned *off* for some time. For example, if at a particular time, both ```procA``` and ```procB``` are reading switches in separate infinite loops that indicates that there is a possibility that these cores may try to read the switches simultaneously. So, to prevent this, we use atomic instructions in both loops. So, if ```procA``` outputs an atomic signal, ```RunB``` will be turned *off* by the memory arbiter.
+* If both the cores try to access the same resource simultaneously, priority is given to ```procA``` by default.
 
+### Atomic Instructions
+
+I have used a TAS (Test And Set) instruction as the atomic instruction in my Multi-Core Processor. Talk about reserved instruction encoding st ...... and also talk about mutex, lock or semaphore .... Talk about when the instruction used and what it does...
+
+Then include the test programs with screenshots...
