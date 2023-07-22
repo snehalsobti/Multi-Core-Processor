@@ -100,13 +100,23 @@ The idea behind accessing the I/O devices is that for each processor, when it wa
 
 I have used a TAS (Test And Set) instruction as the atomic instruction in my Multi-Core Processor. 
 
+#### What is a lock  
+
+* The basic idea behind atomic instructions is that we want to be able to use a data structure called a **Lock** in order to allow multiple cores to read and write to the same memory locations safely. The issue is that if multiple programs are interacting with the same data at the same time then they can get interleaved.
+* Conceptually, a Lock is a data structure with the following operations  <br/>
+```
+Mutex mut = new Mutex(); //create a new lock at some address
+mut.lock(); //waits until this thread can “aquire” the lock. If some other core already has it then wait until they release it.
+<some other code that should only run on one processor core>
+mut.unlock(); //give up the lock, other cores waiting to aquire the lock can now run
+```
+
 #### Understanding the need for TAS instruction  
 
 * The idea behind the test and set hardware instruction is that you want an instruction that semantically is as follows: ```TAS r0, [r1]``` where r0 contains a flag, typically 1, and r1 contains the address of the lock.
 * The instruction will then attempt to perform an ```st r0, [r1]``` instruction, except in addition, it will set some flag so that we can check if the store changed the value that was at R1
 * **NOTE**--> We cannot just use a ```load``` instruction and then ```store``` instruction since what if another core changes the value between these two instructions? We need a single instruction that both performs a store and tells us if that store resulted in modifying a value, implemented in hardware.
 * The simplest implementation would likely be to define ```TAS r0, [r1]``` to perform a ```st r0, [r1]``` and at the same time modify the value of r0 to be the previous value that was at [r1] before the store. Then to check if our ```TAS``` was a success we compare the values before and after.
-* Encoding for TAS instruction -> ```st r1, [r3]``` --> So, store instruction with r1 as rX and r3 as rY is reserved for use as TAS instruction
 
 #### The implementation of Lock  
 
@@ -128,12 +138,8 @@ LOCK_RELEASE(lock_addr)
     *lock_addr = 0; //release the lock  
 }  
 ```
-<br/>
-* So, when we perform a test & set instruction to try and write a value of 1 into the lock (remember 1 means we hold the lock). At the same time, the hardware puts the old value of X into register X. After that we check if the old value was 0. If the old value was 0, it means we set the lock from 0 to 1 which means we now hold the lock. If the previous value was 1 it means that some other core already held the lock and so we need to loop and try again.
-<br/>
-* To implement this instruction, we add another output port to the ```proc`` module that says ```mem_atomic``` which would work similarly to the ```write_enable``` and ```read_enable```. When ```mem_atomic``` = 1 from a processor, the other processor is turned *off*. (If ```procA``` has ```mem_atomic``` = 1 then ```procB``` gets turned *off*, and vise versa). If both processors are asserting ```mem_atomic``` then we have a policy, such as turning *off* ```procB``` until atomic instruction of ```procA``` is done. This logic is very similar to the logic I already explained for ```write_enable``` and ```read_enable```.
-* So, if ```procA``` is in the middle of a ```TAS```, then ```procB``` is not running until that ```TAS``` is done. Likewise, if ```procB``` is in the middle of a ```TAS``` then ```procA``` is not running and won’t ever start one.
-  
-* Talk about reserved instruction encoding st ...... and also talk about mutex, lock or semaphore .... Talk about when the instruction used and what it does...
 
-Then include the test programs with screenshots...
+* So, when we perform a test & set instruction to try and write a value of 1 into the lock (remember 1 means we hold the lock). At the same time, the hardware puts the old value of X into register X. After that we check if the old value was 0. If the old value was 0, it means we set the lock from 0 to 1 which means we now hold the lock. If the previous value was 1 it means that some other core already held the lock and so we need to loop and try again.
+* To implement this instruction, we add another output port to the ```proc``` module that says ```mem_atomic``` which would work similarly to the ```write_enable``` and ```read_enable```. When ```mem_atomic``` = 1 from a processor, the other processor is turned *off*. (If ```procA``` has ```mem_atomic``` = 1 then ```procB``` gets turned *off*, and vise versa). If both processors are asserting ```mem_atomic``` then we have a policy, such as turning *off* ```procB``` until atomic instruction of ```procA``` is done. This logic is very similar to the logic I already explained for ```write_enable``` and ```read_enable```.
+* So, if ```procA``` is in the middle of a ```TAS```, then ```procB``` is not running until that ```TAS``` is done. Likewise, if ```procB``` is in the middle of a ```TAS``` then ```procA``` is not running and won’t ever start one.
+* Encoding for TAS instruction -> ```st r1, [r3]``` --> So, store instruction with r1 as rX and r3 as rY is **reserved** for use as TAS instruction
