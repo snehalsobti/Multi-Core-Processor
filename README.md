@@ -1,7 +1,7 @@
 # Multi-Core-Processor
 A 16-bit, 8-register Multi-Core Processor designed using Verilog HDL (Hardware Description Language) with a wide range of memory-mapped I/O and various additional functionalities. The processor has two cores but it is highly scalable. A memory arbiter policy has been implemented to avoid memory access conflicts among multiple cores. In addition to that, Atomic Instructions have also been implemented to avoid memory access conflicts when multiple cores try to access the same memory location.  
 
-It can handle two independent programs running on two different cores and both of them can interact with I/O at the same time. Both cores share a single port RAM and multiplex their I/O (which means that both cores can work with all the I/O devices and no partitioning is needed)
+Each core has its own set of 16-bit 8 registers. My processor can handle two independent programs running on two different cores and both of them can interact with I/O at the same time. Both cores share a single port RAM and multiplex their I/O (which means that both cores can work with all the I/O devices and no partitioning is needed)
 
 ## Disclaimer
 This repository explains the functionalities of this Multi-Core Processor I built during a Computer Organization course in my second year of university and also contains the test programs (Refer to [Test-Programs](https://github.com/snehalsobti/Multi-Core-Processor/tree/main/Test-Programs)). Although most of the content in this Processor Project was above and beyond the course expectations (which were just to implement a processor capable of handling basic assembly instructions), I cannot publicly share the actual code for the processor to prevent students from committing Academic Integrity violations by copying it.   
@@ -76,7 +76,7 @@ For example, if 01111111 written at address 0x2004 --> turns on all the segments
 There are 10 switches - SW9 to SW0. SW9 is reserved to control the ```Run``` status of the processor. To fetch any input from the switches, the 9 bits are read from address 0x3000. For example, if SW9, SW6, SW2 and SW1 are on and all other switches are off --> ```Run``` will be equal to 1 and when we read from address 0x3000, we get the 9 bits as 001000110   
 
 ### Pushbuttons (Address - 0x4000)  
-There are 4 pushbuttons - KEY3 to KEY0. To fetch any input from the pushbuttons, the 4 bits are read from address 0x4000. For example, if KEY3 is pressed --> when we read from address 0x4000, we get the 4 bits as 1000. So, we can perform Polled I/O.  
+There are 4 pushbuttons - KEY3 to KEY0. These are active-low which means that if a KEY is pressed, it will be represented as a 0. KEY0 is reserved for the ```reset``` operation (to reset the processor). To fetch any input from the pushbuttons, the 3 bits (KEY3 to KEY1) are read from address 0x4000. For example, if KEY3 is pressed --> when we read from address 0x4000, we get the 3 bits as 011. So, we can perform Polled I/O for KEYs.
 
 ## Fundamental Idea behind Multi-Core Processor 
 
@@ -147,6 +147,31 @@ LOCK_RELEASE(lock_addr)
 
 ## Test Programs  
 
-I have included the test programs (i.e. the assembly source code files) in this repository (Refer to [Test-Programs](https://github.com/snehalsobti/Multi-Core-Processor/tree/main/Test-Programs)). Basically, the ```procA``` core starts its execution of the code at line number 1 and the ```procB``` core starts its execution of the code at line number 2. So, we use branch instructions such as ```b PROGRAM_1``` instruction at line number 1 and ```b PROGRAM_2``` at line number 2. The following test programs have been included:  
+I have included the test programs (i.e. the assembly source code files) in this repository (Refer to [Test-Programs](https://github.com/snehalsobti/Multi-Core-Processor/tree/main/Test-Programs)). 
+* The ```procA``` core starts its execution of the code at line number 1 and the ```procB``` core starts its execution of the code at line number 2. So, we use branch instructions such as ```b PROGRAM_1``` instruction at line number 1 and ```b PROGRAM_2``` at line number 2.
+* The .s files that I have included are to be run on the simulator (such as DESim). To run these assembly programs on DE1_SoC board, wherever I have included software delays by running loops having around 1000 iterations, change it to a larger number such as 5 million iterations
+* There are comments added to each source code file that explain the purpose of the particular test program. Additionally, I have also mentioned briefly about all the test program files below.
+* **NOTE** --> SW9 is used as the ```Run``` signal for the processor. So, it must be kept *on* to run the processor. Also, KEY0 is used as the ```Reset``` operation for the processor. So, before starting any program, press the ```Reset``` button.
+  
+The following test programs have been included to test if the processor handles all the assembly code instructions (these do not test the functionality of multiple cores):  
 
-* Final_Legend_Program.s --> It contains two identical programs to be run by the two cores to test if atomic instruction has been implemented correctly in this processor. 
+* test_basic_inst.s --> It tests basic instructions such as ```mv```, ```mvt```, ```sub```, ```add```, ```b``` (and ```b``` with other suffixes except ```bl```), ```ld```, ```st```. It shows on HEX displays either PASSEd or FAILEd.
+* test_sw_led.s --> It runs a simple program of reading data from switches and displaying the data to the LEDs. For example, if SW6 and SW2 are turned *on*, LEDR6 and LEDR2 will be turned *on*.
+* test_shift_cmp.s --> It tests the ```cmp```, ```lsl```, ```lsr```, ```asr```, and ```ror``` instructions. The type of shift operation is selected with SW6 and SW5 (00 == ```lsl```, 01 == ```lsr```, 10 = ```asr```, 11 == ```ror```). The processor must be reset each time these switches are changed, to restart the code. The value to be shifted is displayed on HEX3-0; this value is placed into r0 at the start of the code. The amount to be shifted in each loop iteration is set by SW3 to SW0.
+* test_push_pop_bl.s --> It tests the ```push```, ```pop```, and ```bl``` instructions. It simply calls a subroutine and pushes r4 to a stack before calling the subroutine. It then pops r4 off the stack after returning from the subroutine. The value of r4 is modified by the subroutine but as we push before and pop after the subroutine call, we should retain the original value of r4. So, we check this functionality by displaying r4 on LEDs before, during and after the subroutine.
+
+The following test programs have been included to test the functionality and parallelism of multiple cores and atomic instruction: 
+* test_multi_cores_1.s --> It includes two completely independent programs for the two cores. There will be no I/O access or same memory location access conflicts.
+    * PROGRAM_1 counts from 0 and displays on LEDs.
+    * PROGRAM_2 displays the digits 543210 on the HEX displays. Each digit has to be selected by using the SW switches. Setting SW=0 displays 0, SW=1 displays 1, and so on.
+* test_multi_cores_2.s --> It includes two programs for the two cores but this time, there will be an I/O access conflict. Both cores will try to write to the LEDs which will test the capability of memory arbiter.
+    * PROGRAM_1 reads from KEYs (Pushbuttons). If any of the KEY3, KEY2 or KEY1 is pressed, it turns *on* all the LEDs
+    * PROGRAM_2 starts from 1, keeps incrementing by 1, and displays binary form of every number on the LEDs
+* test_multi_cores_3.s --> It includes two programs for the two cores but this time, the two cores need to communicate with each other. The two cores need to be in sync to display the numbers in sequence on LEDs such as 0, 1, 2, 3 ...... 
+    * PROGRAM_1 displays even numbers on LEDs
+    * PROGRAM_2 displays odd numbers on LEDs <br/>
+Each core, after displaying an odd / even number, stores in its corresponding data variable what it just displayed. So, we have two variables that keep track of the recently displayed even and odd numbers. So, each core checks through the variables what the other core recently displayed on LEDs (number p) and what it has to print now (number q). If both q = p + 1, this means that the core should display its corresponding number; otherwise, wait for the other core to display.
+* Final_Program.s --> It includes two programs but this time both the cores need to access the exact same memory location which is a DATA array. One core needs to read from it and the other needs to read plus modify the DATA array. This is to show the capability of my multi-core processor to handle conflicts related to the exact same memory location.
+    * PROGRAM_1 increments all the elements of the DATA array by increment amount provided through Switches. It only increments when at least one of the Pushbuttons is pressed.
+    * PROGRAM_2 keeps displaying the binary form of elements of DATA on LEDs and the decimal form of elements of DATA on HEX displays. 
+* Final_Legend_Program.s --> It contains only PROGRAM_1. The PROGRAM_1 starts counting from 0 and keeps adding by 1 and displays the number's binary form on LEDs. Both cores run the same program. This is to test the implementation of atomic instruction.
