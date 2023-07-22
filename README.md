@@ -23,8 +23,8 @@ Employers are encouraged to ask me for the Code if they are considering hiring m
 
 Each instruction is being encoded in a 16-bit format. On a broader level, there are two types of encoding being used:  
 * III 0 XXX 000000YYY --> involves only registers
-* III 1 XXX DDDDDDDDD --> involves register as well as immediate data #D <br\>
-Here, III denotes the operation code, XXX denotes register X (operand 1), YYY denotes register Y (operand 2) or DDDDDDDDD denotes #D (operand 2) <br\>
+* III 1 XXX DDDDDDDDD --> involves register as well as immediate data #D <br/>
+Here, III denotes the operation code, XXX denotes register X (operand 1), YYY denotes register Y (operand 2) or DDDDDDDDD denotes #D (operand 2) <br/>
 
 ## Instructions
 
