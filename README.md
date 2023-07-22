@@ -4,7 +4,7 @@ A 16-bit, 8-register Multi-Core Processor designed using Verilog HDL (Hardware D
 It can handle two independent programs running on two different cores and both of them can interact with I/O at the same time. Both cores share a single port RAM and multiplex their I/O (which means that both cores can work with all the I/O devices and no partitioning is needed)
 
 ## Disclaimer
-This repository explains the functionalities of this Multi-Core Processor and also contains the test programs along with the snapshots of the running programs. Although most of the content in this Processor was above and beyond the course expectations (which were just to implement some of the basic instructions of a processor), I cannot publicly share the actual code for the processor to prevent students from committing Academic Integrity violations by copying it.   
+This repository explains the functionalities of this Multi-Core Processor and also contains the test programs along with the snapshots of the running programs. Although most of the content in this Processor Project was above and beyond the course expectations (which were just to implement some of the basic instructions of a processor), I cannot publicly share the actual code for the processor to prevent students from committing Academic Integrity violations by copying it.   
 
 Employers are encouraged to ask me for the Code if they are considering hiring me.  
 
