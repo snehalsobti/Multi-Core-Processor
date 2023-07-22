@@ -4,7 +4,7 @@ A 16-bit, 8-register Multi-Core Processor designed using Verilog HDL (Hardware D
 It can handle two independent programs running on two different cores and both of them can interact with I/O at the same time. Both cores share a single port RAM and multiplex their I/O (which means that both cores can work with all the I/O devices and no partitioning is needed)
 
 ## Disclaimer
-This repository explains the functionalities of this Multi-Core Processor and also contains the test programs along with the snapshots of the running programs. Although most of the content in this Processor Project was above and beyond the course expectations (which were just to implement some of the basic instructions of a processor), I cannot publicly share the actual code for the processor to prevent students from committing Academic Integrity violations by copying it.   
+This repository explains the functionalities of this Multi-Core Processor I built during a Computer Organization course in my second year of university and also contains the test programs (Refer to [Test-Programs](https://github.com/snehalsobti/Multi-Core-Processor/tree/main/Test-Programs)). Although most of the content in this Processor Project was above and beyond the course expectations (which were just to implement a processor capable of handling basic assembly instructions), I cannot publicly share the actual code for the processor to prevent students from committing Academic Integrity violations by copying it.   
 
 Employers are encouraged to ask me for the Code if they are considering hiring me.  
 
@@ -143,4 +143,10 @@ LOCK_RELEASE(lock_addr)
 * So, when we perform a test & set instruction to try and write a value of 1 into the lock (remember 1 means we hold the lock). At the same time, the hardware puts the old value of X into register X. After that we check if the old value was 0. If the old value was 0, it means we set the lock from 0 to 1 which means we now hold the lock. If the previous value was 1 it means that some other core already held the lock and so we need to loop and try again.
 * To implement this instruction, we add another output port to the ```proc``` module that says ```mem_atomic``` which would work similarly to the ```write_enable``` and ```read_enable```. When ```mem_atomic``` = 1 from a processor, the other processor is turned *off*. (If ```procA``` has ```mem_atomic``` = 1 then ```procB``` gets turned *off*, and vise versa). If both processors are asserting ```mem_atomic``` then we have a policy, such as turning *off* ```procB``` until atomic instruction of ```procA``` is done. This logic is very similar to the logic I already explained for ```write_enable``` and ```read_enable```.
 * So, if ```procA``` is in the middle of a ```TAS```, then ```procB``` is not running until that ```TAS``` is done. Likewise, if ```procB``` is in the middle of a ```TAS``` then ```procA``` is not running and won’t ever start one.
-* Encoding for TAS instruction -> ```st r1, [r3]``` --> So, store instruction with r1 as rX and r3 as rY is **reserved** for use as TAS instruction
+* Encoding for TAS instruction -> ```st r1, [r3]``` --> So, store instruction with r1 as rX and r3 as rY is **reserved** for use as TAS instruction in assembly source code
+
+## Test Programs  
+
+I have included the test programs (i.e. the assembly source code files) in this repository (Refer to [Test-Programs](https://github.com/snehalsobti/Multi-Core-Processor/tree/main/Test-Programs)). Basically, the ```procA``` core starts its execution of the code at line number 1 and the ```procB``` core starts its execution of the code at line number 2. So, we use branch instructions such as ```b PROGRAM_1``` instruction at line number 1 and ```b PROGRAM_2``` at line number 2. The following test programs have been included:  
+
+* Final_Legend_Program.s --> It contains two identical programs to be run by the two cores to test if atomic instruction has been implemented correctly in this processor. 
