@@ -55,7 +55,7 @@ lsl | lsl rX, #D | rX <- rX << #D| 111 0 XXX 11 00 0 DDDD  | Logical shift left 
 lsr | lsr rX, #D | rX <- rX >>#D | 111 0 XXX 11 01 0 DDDD  | Logical shift right of rX by #D bits
 asr | asr rX, #D | rX <- rX >>> #D | 111 0 XXX 11 10 0 DDDD  | Arithmetic shift right of rX by #D bits
 ror | ror rX, #D | rX <- rX <<>> #D | 111 0 XXX 11 11 0 DDDD  | Rotate Right of rX by #D bits  
-TAS | st r1, [r3] | Atomic Instruction | 101 0 001 000000 011 | Test And Set Instruction (Refer to [Atomic Instructions](https://github.com/snehalsobti/Multi-Core-Processor/blob/main/README.md#atomic-instructions))
+TAS | st r1, [r3] |-| 101 0 001 000000 011 | Test And Set Instruction (Refer to [Atomic Instructions](https://github.com/snehalsobti/Multi-Core-Processor/blob/main/README.md#atomic-instructions))
 
 ## I/O Devices (along with the addresses used for them)  
 
