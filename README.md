@@ -55,6 +55,7 @@ lsl | lsl rX, #D | rX <- rX << #D| 111 0 XXX 11 00 0 DDDD  | Logical shift left 
 lsr | lsr rX, #D | rX <- rX >>#D | 111 0 XXX 11 01 0 DDDD  | Logical shift right of rX by #D bits
 asr | asr rX, #D | rX <- rX >>> #D | 111 0 XXX 11 10 0 DDDD  | Arithmetic shift right of rX by #D bits
 ror | ror rX, #D | rX <- rX <<>> #D | 111 0 XXX 11 11 0 DDDD  | Rotate Right of rX by #D bits  
+TAS | st r1, [r3] | Atomic Instruction | 101 0 001 000000 011 | Test And Set Instruction (Refer to [Atomic Instructions](https://github.com/snehalsobti/Multi-Core-Processor/edit/main/README.md#atomic-instructions)
 
 ## I/O Devices (along with the addresses used for them)  
 
@@ -87,7 +88,7 @@ There are 4 pushbuttons - KEY3 to KEY0. To fetch any input from the pushbuttons,
 
 The idea behind accessing the I/O devices is that for each processor, when it wants to write then it will assert the ```write_enable``` output signal, and when it wants to read it will assert the ```read_enable``` signal. In both cases, it asserts the signal and then waits for one cycle and then reads/writes the data. The problem is what happens if both cores attempt to perform an operation (either read or write) in the same cycle. The way I resolve that is to have some logic (i.e. the memory arbiter) in the top-level module which basically says that if both cores have asserted a memory request in the same cycle, then only one core can go through.  
 
-* Both cores can read from / write to all I/O devices and you have a hardware mechanism so that only one core can write at a time, and the other core is forced to wait for a cycle (it’s ```Run``` turned off) if both try to write in the same cycle
+* Both cores can read from / write to all I/O devices and there is a hardware mechanism so that only one core can write at a time, and the other core is forced to wait for a cycle (its ```Run``` turned off) if both try to write in the same cycle
 * Both the cores share the same memory --> So, they have the same ```data_in``` signal. But both of them have separate ```read_enable```, ```write_enable```, and ```data_out``` signals.
 * I also use separate ```Run``` signals named ```Run_A``` and ```Run_B``` for both the cores. So, basically, the ```Run``` signal controlled by SW9 and the handling of memory and I/O conflicts decide the values of ```Run_A``` and ```Run_B```. Priority is given to ```procA``` in case both the cores need to access memory at the exact same time.
 * So, the role of the memory arbiter is that if there is a memory or an I/O access conflict between the two cores, decide which core should be given access to what resource, that basically means allocating resources among the cores.
