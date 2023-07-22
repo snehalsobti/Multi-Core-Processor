@@ -1,5 +1,7 @@
 # Multi-Core-Processor
-A 16-bit, 8-register Multi-Core Processor designed using Verilog HDL (Hardware Description Language) with a wide range of memory mapped I/O and various additional functionalities. The processor has two cores but it is highly scalable. Memory arbiter policy has been implemented to avoid memory access conflicts among multiple cores. In addition to that, Atomic Instructions have also been implemented to avoid memory access conflicts when multiple cores try to access the same memory location.   
+A 16-bit, 8-register Multi-Core Processor designed using Verilog HDL (Hardware Description Language) with a wide range of memory-mapped I/O and various additional functionalities. The processor has two cores but it is highly scalable. A memory arbiter policy has been implemented to avoid memory access conflicts among multiple cores. In addition to that, Atomic Instructions have also been implemented to avoid memory access conflicts when multiple cores try to access the same memory location.  
+
+It can handle two independent programs running on two different cores and both of them can interact with I/O at the same time. Both cores share a single port RAM and multiplex their I/O (which means that both cores can work with all the I/O devices and no partitioning is needed)
 
 ## Disclaimer
 This repository explains the functionalities of this Multi-Core Processor and also contains the test programs along with the snapshots of the running programs. Although most of the content in this Processor was above and beyond the course expectations (which were just to implement some of the basic instructions of a processor), I cannot publicly share the actual code for the processor to prevent students from committing Academic Integrity violations by copying it.   
@@ -15,13 +17,14 @@ Employers are encouraged to ask me for the Code if they are considering hiring m
 * lr denotes link register --> r6 reserved as lr
 * pc denotes program counter --> r7 reserved as pc
 * LSB means least significant bit and MSB means most significant bit
+* I/O denotes Input/Output
 
 ### General Encoding Format
 
 Each instruction is being encoded in a 16-bit format. On a broader level, there are two types of encoding being used:  
 * III 0 XXX 000000YYY --> involves only registers
-* III 1 XXX DDDDDDDDD --> involves register as well as immediate data #D <br/>
-Here, III denotes the operation code, XXX denotes register X (operand 1), YYY denotes register Y (operand 2) or DDDDDDDDD denotes #D (operand 2) <br/>
+* III 1 XXX DDDDDDDDD --> involves register as well as immediate data #D <br\>
+Here, III denotes the operation code, XXX denotes register X (operand 1), YYY denotes register Y (operand 2) or DDDDDDDDD denotes #D (operand 2) <br\>
 
 ## Instructions
 
@@ -82,7 +85,10 @@ There are 4 pushbuttons - KEY3 to KEY0. To fetch any input from the pushbuttons,
 
 ### Memory Arbiter  
 
-* Both the cores share the same memory --> So, they have the same ```data_in``` signal. But both of them have separate ```read```, ```write```, and ```data_out``` signals.
+The idea behind accessing the I/O devices is that for each processor, when it wants to write then it will assert the ```write_enable``` output signal, and when it wants to read it will assert the ```read_enable``` signal. In both cases, it asserts the signal and then waits for one cycle and then reads/writes the data. The problem is what happens if both cores attempt to perform an operation (either read or write) in the same cycle. The way I resolve that is to have some logic (i.e. the memory arbiter) in the top-level module which basically says that if both cores have asserted a memory request in the same cycle, then only one core can go through.  
+
+* Both cores can read from / write to all I/O devices and you have a hardware mechanism so that only one core can write at a time, and the other core is forced to wait for a cycle (it’s ```Run``` turned off) if both try to write in the same cycle
+* Both the cores share the same memory --> So, they have the same ```data_in``` signal. But both of them have separate ```read_enable```, ```write_enable```, and ```data_out``` signals.
 * I also use separate ```Run``` signals named ```Run_A``` and ```Run_B``` for both the cores. So, basically, the ```Run``` signal controlled by SW9 and the handling of memory and I/O conflicts decide the values of ```Run_A``` and ```Run_B```. Priority is given to ```procA``` in case both the cores need to access memory at the exact same time.
 * So, the role of the memory arbiter is that if there is a memory or an I/O access conflict between the two cores, decide which core should be given access to what resource, that basically means allocating resources among the cores.
 * In addition to this, each of the cores outputs an atomic signal as well. An atomic signal is output when an atomic instruction is performed. Basically, we use the atomic instruction in our assembly code (.s file) when we know that the two cores might be trying to access the exact same memory location simultaneously. (Details regarding Atomic Instructions are discussed in detail in a separate section)
@@ -92,6 +98,42 @@ There are 4 pushbuttons - KEY3 to KEY0. To fetch any input from the pushbuttons,
 
 ### Atomic Instructions
 
-I have used a TAS (Test And Set) instruction as the atomic instruction in my Multi-Core Processor. Talk about reserved instruction encoding st ...... and also talk about mutex, lock or semaphore .... Talk about when the instruction used and what it does...
+I have used a TAS (Test And Set) instruction as the atomic instruction in my Multi-Core Processor. 
+
+#### Understanding the need for TAS instruction  
+
+* The idea behind the test and set hardware instruction is that you want an instruction that semantically is as follows: ```TAS r0, [r1]``` where r0 contains a flag, typically 1, and r1 contains the address of the lock.
+* The instruction will then attempt to perform an ```st r0, [r1]``` instruction, except in addition, it will set some flag so that we can check if the store changed the value that was at R1
+* **NOTE**--> We cannot just use a ```load``` instruction and then ```store``` instruction since what if another core changes the value between these two instructions? We need a single instruction that both performs a store and tells us if that store resulted in modifying a value, implemented in hardware.
+* The simplest implementation would likely be to define ```TAS r0, [r1]``` to perform a ```st r0, [r1]``` and at the same time modify the value of r0 to be the previous value that was at [r1] before the store. Then to check if our ```TAS``` was a success we compare the values before and after.
+* Encoding for TAS instruction -> ```st r1, [r3]``` --> So, store instruction with r1 as rX and r3 as rY is reserved for use as TAS instruction
+
+#### The implementation of Lock  
+
+Given a TAS instruction the implementation of the lock would be as follows: 
+``` 
+LOCK_AQUIRE(lock_addr)
+{     
+    int X = 1 //we attempt to write a 1 into the lock  
+    while (true)  
+    {  
+        TAS X, [lock_addr];  
+        if (X == 0) return;  
+    }  
+}  
+```
+```  
+LOCK_RELEASE(lock_addr)
+{    
+    *lock_addr = 0; //release the lock  
+}  
+```
+<br/>
+* So, when we perform a test & set instruction to try and write a value of 1 into the lock (remember 1 means we hold the lock). At the same time, the hardware puts the old value of X into register X. After that we check if the old value was 0. If the old value was 0, it means we set the lock from 0 to 1 which means we now hold the lock. If the previous value was 1 it means that some other core already held the lock and so we need to loop and try again.
+<br/>
+* To implement this instruction, we add another output port to the ```proc`` module that says ```mem_atomic``` which would work similarly to the ```write_enable``` and ```read_enable```. When ```mem_atomic``` = 1 from a processor, the other processor is turned *off*. (If ```procA``` has ```mem_atomic``` = 1 then ```procB``` gets turned *off*, and vise versa). If both processors are asserting ```mem_atomic``` then we have a policy, such as turning *off* ```procB``` until atomic instruction of ```procA``` is done. This logic is very similar to the logic I already explained for ```write_enable``` and ```read_enable```.
+* So, if ```procA``` is in the middle of a ```TAS```, then ```procB``` is not running until that ```TAS``` is done. Likewise, if ```procB``` is in the middle of a ```TAS``` then ```procA``` is not running and won’t ever start one.
+  
+* Talk about reserved instruction encoding st ...... and also talk about mutex, lock or semaphore .... Talk about when the instruction used and what it does...
 
 Then include the test programs with screenshots...
